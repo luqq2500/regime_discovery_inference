@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
-from core.dto import LatentTraversalAnalysisRequest, LatentTraversalAnalysisResponse, df_describe_index, LatentTraversalAnalysisOutput
+import yfinance
+
+from core.dto import LatentTraversalAnalysisRequest, LatentTraversalAnalysisResponse, df_describe_index, \
+    LatentTraversalAnalysisOutput
 from core.repository import InferenceRepository
-from core.service import LatentTraversalService, ScalerService
+from core.service import LatentTraversalService, ScalerService, ModelService
 
 
 class LatentTraversalAnalysisUseCase:
@@ -29,10 +32,10 @@ class LatentTraversalAnalysisUseCase:
                 dimension=input_config.dimension,
                 degree_of_freedom=result.degree_of_freedom,
                 sweeps=result.sweeps,
-                raw_sweep=sweep,
-                raw_stats=stats,
-                raw_stats_filtered=stats_filtered,
-                sweep_rescaled=sweep_r,
+                df_raw=sweep,
+                stats_raw=stats,
+                stats_filtered_raw=stats_filtered,
+                df_rescaled=sweep_r,
                 stats_rescaled=stats_r,
                 stats_filtered_rescaled=stats_filtered_r,
             ))
@@ -50,10 +53,8 @@ class LatentTraversalAnalysisUseCase:
         has_sweep = self.sweep_col_name in result.columns
         sweep = result[[self.sweep_col_name]] if has_sweep else pd.DataFrame(index=result.index)
         features = result.drop(columns=[self.sweep_col_name]) if has_sweep else result
-
         if features.empty:
             return result.T if is_stats else result
-
         if is_stats:
             rescaled_df = self.scaler_service.inverse_transform_df_stats(features)
             output_df = rescaled_df.T

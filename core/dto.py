@@ -98,10 +98,10 @@ class LatentTraversalAnalysisOutput:
     dimension: int
     degree_of_freedom: float
     sweeps: list[float]
-    raw_sweep: pd.DataFrame
-    raw_stats: pd.DataFrame
-    raw_stats_filtered: pd.DataFrame
-    sweep_rescaled: pd.DataFrame
+    df_raw: pd.DataFrame
+    stats_raw: pd.DataFrame
+    stats_filtered_raw: pd.DataFrame
+    df_rescaled: pd.DataFrame
     stats_rescaled: pd.DataFrame
     stats_filtered_rescaled: pd.DataFrame
 
@@ -114,9 +114,9 @@ class LatentTraversalAnalysisOutput:
         stds = self.stats_filtered_rescaled["std"].values
         snrs = self.stats_filtered_rescaled["snr"].values
 
-        raw_means = self.raw_stats_filtered["mean"].values
-        raw_stds = self.raw_stats_filtered["std"].values
-        raw_snrs = self.raw_stats_filtered["snr"].values
+        raw_means = self.stats_filtered_raw["mean"].values
+        raw_stds = self.stats_filtered_raw["std"].values
+        raw_snrs = self.stats_filtered_raw["snr"].values
 
         '''  
         if 'snr' not in self.stats_filtered_rescaled.columns:
@@ -142,23 +142,32 @@ class LatentTraversalAnalysisOutput:
         return [asdict(feature_metric) for feature_metric in self.feature_metrics]
 
     def _prepare_rescaled_sweep_payload(self):
-        return json.loads(self.sweep_rescaled.replace({np.nan: None}).to_json(orient='records', double_precision=3))
+        return json.loads(self.df_rescaled.replace({np.nan: None}).to_json(orient='records', double_precision=3))
 
     def get_id(self):
         return self.dimension
+
+    def df_to_json(self, df: pd.DataFrame):
+        return json.loads(df.to_json(orient='records', double_precision=2))
 
     def get_payload(self):
         return {
             'dimension': self.dimension,
             'degree of freedom': self.degree_of_freedom,
             'sweeps': self.sweeps,
-            #'raw_stats_filtered': self.raw_stats_filtered,
-            #'stats_filtered_rescaled': self.stats_filtered_rescaled,
-            'feature_metrics': self._prepare_feature_metrics_payload(),
+            'df_raw': self.df_to_json(self.df_raw),
+            'df_rescaled': self.df_to_json(self.df_rescaled),
+            'stats_raw': self.df_to_json(self.stats_raw),
+            'stats_rescaled': self.df_to_json(self.stats_rescaled),
+            'stats_filtered_raw': self.df_to_json(self.stats_filtered_raw),
+            'stats_filtered_rescaled': self.df_to_json(self.stats_filtered_rescaled),
+            'feature_metrics': [asdict(feature_metric) for feature_metric in self.feature_metrics],
         }
 
 @dataclass
 class LatentTraversalAnalysisResponse:
     results: list[LatentTraversalAnalysisOutput]
     def get_payload(self):
-        return {output.dimension: output.get_payload() for output in self.results}
+        return [output.get_payload() for output in self.results]
+
+
