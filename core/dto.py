@@ -1,20 +1,18 @@
 import json
 from dataclasses import dataclass, field, asdict
-from enum import Enum
 from typing import Optional
 
 import numpy as np
 import pandas as pd
-import torch
-from sklearn.base import TransformerMixin
 
-describe_index = pd.DataFrame({"sweep": [1]}).describe().index.tolist()
+
+df_describe_index = pd.DataFrame({"sweep": [1]}).describe().index.tolist()
 
 @dataclass
 class LatentTraversalStatsFilter:
-    std_threshold: Optional[float]
-    snr_threshold: Optional[float]
-    top_n: Optional[int]
+    std_threshold: Optional[float] = None
+    snr_threshold: Optional[float] = None
+    top_n: Optional[int] = None
     filter_columns: Optional[list[str]] = field(default_factory=lambda: ['mean', 'std'])
     sort_column: Optional[str] = 'snr'
 
@@ -23,7 +21,7 @@ class LatentTraversalStatsFilter:
 
     def _validate(self):
         for filter_col in self.filter_columns:
-            if filter_col not in describe_index:
+            if filter_col not in df_describe_index:
                 raise ValueError(f'Unknown filter column {filter_col}')
 
     def _filter_columns(self, df):
@@ -62,21 +60,21 @@ class LatentTraversalStatsFilter:
         return df
 
 
-
 @dataclass
-class LatentTraversalConfig:
-    model: torch.nn.Module
-    col_names: list[str]
-    scaler: TransformerMixin
-
-@dataclass
-class LatentTraversalRequest:
+class LatentTraversalInput:
+    dimension: int
     sigma_range: tuple[float, float]
     filter: LatentTraversalStatsFilter
 
 @dataclass
+class LTARequest:
+    inputs: list[LatentTraversalInput]
+
+@dataclass
 class LatentTraversalOutput:
     dimension: int
+    degree_of_freedom: float
+    sweeps: list[float]
     raw_sweep: pd.DataFrame
     raw_stats: pd.DataFrame
     raw_stats_filtered: pd.DataFrame
@@ -90,13 +88,13 @@ class LatentTraversalOutput:
         horizons = [feature[1] if len(feature) > 1 else None for feature in features]
         means = self.stats_filtered_rescaled["mean"].values
         stds = self.stats_filtered_rescaled["std"].values
-        if "snr" not in self.stats_filtered_rescaled.columns:
+        if 'snr' not in self.stats_filtered_rescaled.columns:
             snrs = np.where(stds != 0, means/stds, np.nan)
         else:
             snrs = self.stats_filtered_rescaled["snr"].values
 
-        self.feature_metrics: list[OutputFeatureMetric] = [
-            OutputFeatureMetric(asset, horizon, round(float(mean),2), round(float(std),2), round(float(snr),2))
+        self.feature_metrics: list[FeatureMetrics] = [
+            FeatureMetrics(asset, horizon, round(float(mean), 2), round(float(std), 2), round(float(snr), 2))
             for asset, horizon, mean, std, snr in zip(assets, horizons, means, stds, snrs)
         ]
 
@@ -104,29 +102,30 @@ class LatentTraversalOutput:
     def _prepare_feature_metrics_payload(self):
         return [asdict(feature_metric) for feature_metric in self.feature_metrics]
 
-    def _prepare_raw_sweep_payload(self):
-        return json.loads(self.raw_sweep.replace({np.nan: None}).to_json(orient='records', double_precision=3))
+    def _prepare_rescaled_sweep_payload(self):
+        return json.loads(self.sweep_rescaled.replace({np.nan: None}).to_json(orient='records', double_precision=3))
+
+    def get_id(self):
+        return self.dimension
 
     def get_payload(self):
         return {
             'dimension': self.dimension,
+            'degree of freedom': self.degree_of_freedom,
+            'sweeps': self.sweeps,
+            'raw_stats_filtered': self.raw_stats_filtered,
+            'stats_filtered_rescaled': self.stats_filtered_rescaled,
             'feature_metrics': self._prepare_feature_metrics_payload(),
-            'sweep': self._prepare_raw_sweep_payload()
         }
 
 
 @dataclass
-class OutputFeatureMetric:
+class FeatureMetrics:
     asset: Optional[str]
     horizon: Optional[str]
     mean: Optional[float]
     std: Optional[float]
     snr: Optional[float]
-
-@dataclass
-class RegimeProfile:
-    id: int
-    top_assets: Optional[list[OutputFeatureMetric]]
 
 @dataclass
 class LatentTraversalResponse:
