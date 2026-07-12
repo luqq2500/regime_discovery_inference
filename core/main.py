@@ -1,33 +1,24 @@
+from pprint import pprint
+
 from core.repository import InferenceRepository
-from core.usecase.dto import LTAConfig, LatentTraversalStatsFilter, LTARequest
-from core.usecase.lta import LatentTraversalUseCase
-from rich import print as rich_print
+from core.service import ModelService, ScalerService, LatentTraversalService
+from core.dto import LatentTraversalInput, LatentTraversalStatsFilter, LatentTraversalAnalysisRequest
+from core.usecase import LatentTraversalAnalysisUseCase
 
 if __name__ == '__main__':
 
-    #repository = AssetRepository()
-
+    model_service = ModelService()
+    scaler_service = ScalerService()
     repository = InferenceRepository()
-    print(repository.get_embeddings())
+    lt_service = LatentTraversalService(model_service, repository)
 
+    lt_usecase = LatentTraversalAnalysisUseCase(lt_service, scaler_service, repository)
 
-    '''
-    lt = LatentTraversalUseCase(repository)
+    lt_inputs = [
+        LatentTraversalInput(3, (-3.5, 3.5)),
+        LatentTraversalInput(6, (-3.5, 3.5)),
+    ]
+    request = LatentTraversalAnalysisRequest(lt_inputs)
+    response = lt_usecase.run(request)
+    pprint(response.get_payload())
 
-
-    config = LTAConfig(
-        dimension=1,
-        sigma_range=(-2, 2),
-        filter=LatentTraversalStatsFilter(
-            snr_threshold=0.1,
-            top_n=5
-        )
-    )
-
-    request = LTARequest([config])
-
-    response = lt.execute(request)
-    for result in response.outputs:
-        print(f'Dimension: {result.dimension}\n')
-        rich_print(f'Payload: {result.get_payload()}\n')
-    '''
