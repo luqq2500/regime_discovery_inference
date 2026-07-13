@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import yfinance
 
 from core.dto import LatentTraversalAnalysisRequest, LatentTraversalAnalysisResponse, df_describe_index, \
     LatentTraversalAnalysisOutput
