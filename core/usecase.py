@@ -4,7 +4,7 @@ import pandas as pd
 from core.domain import df_describe_index
 from core.dto import LatentTraversalAnalysisResponse, LatentTraversalAnalysisOutput, LatentTraversalAnalysisRequest
 from core.repository import InferenceRepository
-from core.service import LatentTraversalService, ScalerService, ModelService
+from core.service import LatentTraversalService, ScalerService
 
 class LatentTraversalAnalysisUseCase:
     def __init__(self, traversal_service: LatentTraversalService,
@@ -14,51 +14,57 @@ class LatentTraversalAnalysisUseCase:
         self.traversal_service = traversal_service
         self.scaler_service = scaler_service
         self.repository = inference_repository
-        self.sweep_col_name = 'sweep'
+        self.traversal_col_name = 'sweep'
 
     def run(self, request: LatentTraversalAnalysisRequest)->LatentTraversalAnalysisResponse:
         results: list[LatentTraversalAnalysisOutput] = []
         lt_inputs = request.inputs
         for input_config in lt_inputs:
             result = self.traversal_service.execute(input_config)
+
             sweep = self._dataframe_output(result.sweeps, result.recon)
             stats = sweep.describe().T
             stats_filtered = input_config.filter.do_filter(stats)
-            sweep_r = self._rescale_result(sweep)
-            stats_r = self._rescale_result(stats.T)
-            stats_filtered_r = self._rescale_result(stats_filtered.T)
+
+            sweep_r = self._rescale(sweep)
+            stats_r = self._rescale(stats.T)
+            stats_filtered_r = self._rescale(stats_filtered.T)
+
             results.append(LatentTraversalAnalysisOutput(
                 dimension=input_config.dimension,
                 degree_of_freedom=result.degree_of_freedom,
                 sweeps=result.sweeps,
-                df_raw=sweep,
-                stats_raw=stats,
-                stats_filtered_raw=stats_filtered,
-                df_rescaled=sweep_r,
-                stats_rescaled=stats_r,
-                stats_filtered_rescaled=stats_filtered_r,
+                result_scaled=sweep,
+                stats_scaled=stats,
+                stats_filtered_scaled=stats_filtered,
+                result_raw=sweep_r,
+                stats_raw=stats_r,
+                stats_filtered_raw=stats_filtered_r,
             ))
         return LatentTraversalAnalysisResponse(results)
 
     def _dataframe_output(self, sweep, recon):
         df = pd.DataFrame(recon, columns=self.repository.get_feature_columns())
-        df.insert(0, self.sweep_col_name, sweep)
+        df.insert(0, self.traversal_col_name, sweep)
         return df
 
-    def _rescale_result(self, result: pd.DataFrame) -> pd.DataFrame:
+    def _rescale(self, result: pd.DataFrame) -> pd.DataFrame:
         result = result.copy()
-        is_stats = result.index.isin(df_describe_index).any()
+
+        is_describe = result.index.isin(df_describe_index).any()
         has_snr = 'snr' in result.index
-        has_sweep = self.sweep_col_name in result.columns
-        sweep = result[[self.sweep_col_name]] if has_sweep else pd.DataFrame(index=result.index)
-        features = result.drop(columns=[self.sweep_col_name]) if has_sweep else result
+        has_sweep = self.traversal_col_name in result.columns
+        sweep = result[[self.traversal_col_name]] if has_sweep else pd.DataFrame(index=result.index)
+        features = result.drop(columns=[self.traversal_col_name]) if has_sweep else result
+
         if features.empty:
-            return result.T if is_stats else result
-        if is_stats:
-            rescaled_df = self.scaler_service.inverse_transform_df_stats(features)
+            return result.T if is_describe else result
+
+        if is_describe:
+            rescaled_df = self.scaler_service.inverse_transform_df_describe(features)
             output_df = rescaled_df.T
             if has_snr:
-                output_df['snr'] = output_df['mean'] / output_df['std'].replace(0, np.nan)
+                output_df['snr'] = abs(output_df['mean'] / output_df['std'].replace(0, np.nan))
         else:
             rescaled_df = self.scaler_service.inverse_transform_df(features)
             output_df = pd.concat([sweep, rescaled_df], axis=1)

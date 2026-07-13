@@ -10,8 +10,8 @@ df_describe_index = pd.DataFrame({"sweep": [1]}).describe().index.tolist()
 class LatentTraversalInput:
     dimension: int
     sigma_range: tuple[float, float]
+    top_n: int
     snr_threshold: float=0.1
-    top_n: int=5
     def __post_init__(self):
         self.filter = LatentTraversalStatsFilter(
             snr_threshold=self.snr_threshold,
@@ -32,6 +32,7 @@ class LatentTraversalStatsFilter:
     top_n: Optional[int] = None
     filter_columns: Optional[list[str]] = field(default_factory=lambda: ['mean', 'std'])
     sort_column: Optional[str] = 'snr'
+    filtered_stats_columns: list[str] = None
 
     def __post_init__(self):
         self._validate()
@@ -47,7 +48,7 @@ class LatentTraversalStatsFilter:
 
     def _filter_snr(self, df):
         df = df.copy()
-        df['snr'] = df['mean'].abs() / df['std'].replace(0, np.nan)
+        df['snr'] = abs(df['mean'] / df['std'].replace(0, np.nan))
         return df[df['snr'] >= self.snr_threshold]
 
     def _filter_std(self, df):
@@ -74,15 +75,16 @@ class LatentTraversalStatsFilter:
             df = self._sort_column(df)
         if self.top_n is not None:
             df = self._get_top(df)
+        self.filtered_stats_columns = df.columns
         return df
 
 @dataclass
 class FeatureMetrics:
     asset: Optional[str]
     horizon: Optional[str]
-    mean: Optional[float]
-    std: Optional[float]
-    snr: Optional[float]
-    mean_latent: Optional[float]
-    std_latent: Optional[float]
-    snr_latent: Optional[float]
+    mean_scaled: Optional[float]
+    std_scaled: Optional[float]
+    snr_scaled: Optional[float]
+    mean_raw: Optional[float]
+    std_raw: Optional[float]
+    snr_raw: Optional[float]

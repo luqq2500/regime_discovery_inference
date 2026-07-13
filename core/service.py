@@ -75,7 +75,7 @@ class ScalerService:
         except Exception as e:
             raise RuntimeError(f'Scaler service method inverse_transform_df error: {e}')
 
-    def inverse_transform_df_stats(self, features: pd.DataFrame) -> pd.DataFrame:
+    def inverse_transform_df_describe(self, features: pd.DataFrame) -> pd.DataFrame:
         means, scales = self._get_scales_for(list(features.columns))
         matrix = features.values.astype(float).copy()
         location_rows = ['mean', 'min', '25%', '50%', '75%', 'max']
