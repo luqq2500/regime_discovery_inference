@@ -1,45 +1,12 @@
-from dataclasses import dataclass, field, asdict
-from typing import Optional
+from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
-from core.domain import LatentTraversalStatsFilter
-
-
-@dataclass
-class LatentTraversalInput:
-    dimension: int
-    sigma_range: tuple[float, float]
-    snr_threshold: float=0.1
-    top_n: int=5
-    def __post_init__(self):
-        self.filter = LatentTraversalStatsFilter(
-            snr_threshold=self.snr_threshold,
-            top_n=self.top_n
-        )
-
-@dataclass
-class LatentTraversalOutput:
-    dimension: int
-    degree_of_freedom: float
-    sweeps: list[float]
-    recon: np.ndarray
+from core.domain import LatentTraversalInput, FeatureMetrics
 
 @dataclass
 class LatentTraversalAnalysisRequest:
-    configurations: list[LatentTraversalInput]
-
-@dataclass
-class FeatureMetrics:
-    asset: Optional[str]
-    horizon: Optional[str]
-    mean: Optional[float]
-    std: Optional[float]
-    snr: Optional[float]
-    mean_latent: Optional[float]
-    std_latent: Optional[float]
-    snr_latent: Optional[float]
+    inputs: list[LatentTraversalInput]
 
 @dataclass
 class LatentTraversalAnalysisOutput:

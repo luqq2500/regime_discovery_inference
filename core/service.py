@@ -6,9 +6,8 @@ import pandas as pd
 import torch
 from scipy.stats import t
 from sklearn.preprocessing import StandardScaler
-
+from core.domain import LatentTraversalOutput, LatentTraversalInput
 from core.repository import InferenceRepository
-from core.dto import LatentTraversalInput, LatentTraversalAnalysisOutput, df_describe_index, LatentTraversalOutput
 
 
 class ModelService:
@@ -126,4 +125,3 @@ class LatentTraversalService:
         p_right = t.cdf(sigma_range[1], dof)
         probs = np.linspace(p_left, p_right, steps)
         return t.ppf(probs, df=dof)
-

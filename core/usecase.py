@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from core.dto import LatentTraversalAnalysisRequest, LatentTraversalAnalysisResponse, df_describe_index, \
-    LatentTraversalAnalysisOutput
+from core.domain import df_describe_index
+from core.dto import LatentTraversalAnalysisResponse, LatentTraversalAnalysisOutput, LatentTraversalAnalysisRequest
 from core.repository import InferenceRepository
 from core.service import LatentTraversalService, ScalerService, ModelService
-
 
 class LatentTraversalAnalysisUseCase:
     def __init__(self, traversal_service: LatentTraversalService,
@@ -19,7 +18,8 @@ class LatentTraversalAnalysisUseCase:
 
     def run(self, request: LatentTraversalAnalysisRequest)->LatentTraversalAnalysisResponse:
         results: list[LatentTraversalAnalysisOutput] = []
-        for input_config in request.configurations:
+        lt_inputs = request.inputs
+        for input_config in lt_inputs:
             result = self.traversal_service.execute(input_config)
             sweep = self._dataframe_output(result.sweeps, result.recon)
             stats = sweep.describe().T

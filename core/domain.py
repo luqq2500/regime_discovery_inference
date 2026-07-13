@@ -7,6 +7,25 @@ import pandas as pd
 df_describe_index = pd.DataFrame({"sweep": [1]}).describe().index.tolist()
 
 @dataclass
+class LatentTraversalInput:
+    dimension: int
+    sigma_range: tuple[float, float]
+    snr_threshold: float=0.1
+    top_n: int=5
+    def __post_init__(self):
+        self.filter = LatentTraversalStatsFilter(
+            snr_threshold=self.snr_threshold,
+            top_n=self.top_n
+        )
+
+@dataclass
+class LatentTraversalOutput:
+    dimension: int
+    degree_of_freedom: float
+    sweeps: list[float]
+    recon: np.ndarray
+
+@dataclass
 class LatentTraversalStatsFilter:
     std_threshold: Optional[float] = None
     snr_threshold: Optional[float] = None
@@ -56,3 +75,14 @@ class LatentTraversalStatsFilter:
         if self.top_n is not None:
             df = self._get_top(df)
         return df
+
+@dataclass
+class FeatureMetrics:
+    asset: Optional[str]
+    horizon: Optional[str]
+    mean: Optional[float]
+    std: Optional[float]
+    snr: Optional[float]
+    mean_latent: Optional[float]
+    std_latent: Optional[float]
+    snr_latent: Optional[float]
