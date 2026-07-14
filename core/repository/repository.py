@@ -1,12 +1,15 @@
 import os
 from typing import Any
+
+import numpy as np
 import pandas as pd
 import torch
 
 class InferenceRepository:
-    def __init__(self, path='assets', asset_file='asset.pt'):
+    def __init__(self, file_name='repository.pt'):
         try:
-            asset = torch.load(os.path.join(path, asset_file), map_location=torch.device('cpu'), weights_only=False)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            asset = torch.load(os.path.join(current_dir, file_name), map_location=torch.device('cpu'), weights_only=False)
             self.embeddings = asset['embeddings']
             self.model_params = asset['model_params']
             self.degree_of_freedoms = asset['degree_of_freedoms']
@@ -16,7 +19,7 @@ class InferenceRepository:
         except (FileNotFoundError, KeyError, ValueError, RuntimeError) as e:
             raise RuntimeError(f'Inference repository initialization encountered error: {e}')
 
-    def get_embeddings(self):
+    def get_embeddings(self)->np.ndarray:
         return self.embeddings
     def get_model_params(self)->dict[str, Any]:
         return self.model_params

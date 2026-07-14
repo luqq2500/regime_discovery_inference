@@ -7,14 +7,15 @@ import torch
 from scipy.stats import t
 from sklearn.preprocessing import StandardScaler
 from core.domain import LatentTraversalOutput, LatentTraversalInput
-from core.repository import InferenceRepository
+from core.repository.repository import InferenceRepository
 
 
 class ModelService:
-    def __init__(self, path='assets', encoder_file='encoder.pt', decoder_file='decoder.pt'):
+    def __init__(self, encoder_file='encoder.pt', decoder_file='decoder.pt'):
         try:
-            self.encoder = torch.jit.load(os.path.join(path, encoder_file), map_location=torch.device('cpu'))
-            self.decoder = torch.jit.load(os.path.join(path, decoder_file), map_location=torch.device('cpu'))
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            self.encoder = torch.jit.load(os.path.join(current_dir, encoder_file), map_location=torch.device('cpu'))
+            self.decoder = torch.jit.load(os.path.join(current_dir, decoder_file), map_location=torch.device('cpu'))
         except Exception as e:
             raise RuntimeError(f'Model service initialization error: {e}')
 
@@ -22,6 +23,7 @@ class ModelService:
         tensor = self._prepare_tensor(x)
         try:
             torch.inference_mode()
+            torch.manual_seed(42)
             output = self.encoder(tensor)
             _, _, zs = output
         except Exception as e:
@@ -32,6 +34,7 @@ class ModelService:
         tensor = self._prepare_tensor(z)
         try:
             torch.inference_mode()
+            torch.manual_seed(42)
             output = self.decoder(tensor)
         except Exception as e:
             raise RuntimeError(f'Model service decode error: {e}')
@@ -47,21 +50,21 @@ class ModelService:
         return tensor
 
 class ScalerService:
-    def __init__(self, path='assets', file_name='asset.pt'):
+    def __init__(self, file_name='scaler.pt'):
         try:
-            asset = torch.load(os.path.join(path, file_name), map_location=torch.device('cpu'), weights_only=False)
-            scaler_type = asset['scaler_type']
-            scaler_weights = asset['scaler_weights']
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            scaler_config = torch.load(os.path.join(current_dir, file_name), map_location=torch.device('cpu'), weights_only=False)
+            scaler_type = scaler_config['type']
             if scaler_type == 'StandardScaler':
                 scaler = StandardScaler()
-                scaler.mean_ = scaler_weights['mean']
-                scaler.scale_ = scaler_weights['scale']
-                scaler.var_ = scaler_weights['var']
-                scaler.n_samples_seen_ = scaler_weights['n_samples_seen_']
+                scaler.mean_ = scaler_config['mean']
+                scaler.scale_ = scaler_config['scale']
+                scaler.var_ = scaler_config['var']
+                #scaler.n_samples_seen_ = scaler_config['n_samples_seen_']
             else:
                 raise ValueError(f'Unsupported scaler type: {scaler_type}')
             self.scaler = scaler
-            self.feature_columns = asset['data'].columns.tolist()
+            self.feature_columns = scaler_config['feature_columns']
         except Exception as e:
             raise RuntimeError(f'Scaler service initialization error: {e}')
 

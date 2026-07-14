@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 
 from core.domain import df_describe_index
-from core.dto import LatentTraversalAnalysisResponse, LatentTraversalAnalysisOutput, LatentTraversalAnalysisRequest
-from core.repository import InferenceRepository
-from core.service import LatentTraversalService, ScalerService
+from core.usecase.dto import LatentTraversalAnalysisResponse, LatentTraversalAnalysisOutput, LatentTraversalAnalysisRequest
+from core.repository.repository import InferenceRepository
+from core.service.service import LatentTraversalService, ScalerService
+from core.usecase.interface import LatentTraversalAnalyserUseCase
 
-class LatentTraversalAnalysisUseCase:
+
+class LatentTraversalAnalysisUseCase(LatentTraversalAnalyserUseCase):
     def __init__(self, traversal_service: LatentTraversalService,
                  scaler_service: ScalerService,
                  inference_repository: InferenceRepository):
@@ -16,7 +18,7 @@ class LatentTraversalAnalysisUseCase:
         self.repository = inference_repository
         self.traversal_col_name = 'sweep'
 
-    def run(self, request: LatentTraversalAnalysisRequest)->LatentTraversalAnalysisResponse:
+    def analyse(self, request: LatentTraversalAnalysisRequest) -> LatentTraversalAnalysisResponse:
         results: list[LatentTraversalAnalysisOutput] = []
         lt_inputs = request.inputs
         for input_config in lt_inputs:
@@ -31,15 +33,15 @@ class LatentTraversalAnalysisUseCase:
             stats_filtered_r = self._rescale(stats_filtered.T)
 
             results.append(LatentTraversalAnalysisOutput(
-                dimension=input_config.dimension,
+                regime=input_config.dimension,
                 degree_of_freedom=result.degree_of_freedom,
-                sweeps=result.sweeps,
+                traversal_sweeps=result.sweeps,
                 result_scaled=sweep,
-                stats_scaled=stats,
-                stats_filtered_scaled=stats_filtered,
+                asset_stats_scaled=stats,
+                filtered_asset_stats_scaled=stats_filtered,
                 result_raw=sweep_r,
-                stats_raw=stats_r,
-                stats_filtered_raw=stats_filtered_r,
+                asset_stats_raw=stats_r,
+                filtered_asset_stats_raw=stats_filtered_r,
             ))
         return LatentTraversalAnalysisResponse(results)
 
