@@ -37,16 +37,18 @@ class RegimeCard(QFrame):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Compact "RX" label
-        self.lbl_title = QLabel(f"R{dimension}")
+        self.lbl_title = QLabel(f"R{dimension} ({dof:.1f})")
         self.lbl_title.setStyleSheet("font-weight: bold; font-size: 10px; color: #ffffff;")
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl_title)
 
+        '''
         self.lbl_dof = QLabel(f"ν≈{dof:.1f}")
         self.lbl_dof.setStyleSheet("font-size: 8px; color: #8a8a8a;")
         self.lbl_dof.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        layout.addWidget(self.lbl_title)
         layout.addWidget(self.lbl_dof)
+        '''
+
 
         self._update_style()
 
@@ -120,7 +122,7 @@ class ConfigPanel(QWidget):
         root.addWidget(sub)
 
         # --- Regime Selection (Compact 3x3 Layout Grid) ---
-        g_regimes = QGroupBox("Regimes (Dimensions)")
+        g_regimes = QGroupBox("Regimes (Degree of Freedom)")
 
         gl = QVBoxLayout(g_regimes)
         gl.setSpacing(6)

@@ -6,7 +6,6 @@ from core.service.service import ModelService, ScalerService, LatentTraversalSer
 from core.usecase.dto import LatentTraversalAnalysisRequest
 from core.usecase.usecase import LatentTraversalAnalysisUseCase
 
-
 def wire_lta_usecase():
     model_service = ModelService()
     scaler_service = ScalerService()

@@ -83,53 +83,26 @@ class RepositoryViewModel(QObject):
     def feature_columns(self) -> List[str]:
         return list(self._repo.get_feature_columns())
 
-    def get_embedding_projection(self, method: str = "pca", n_components: int = 2) -> Optional[np.ndarray]:
+    def get_umap_projection_3d(self) -> Optional[np.ndarray]:
         """
-        Project embeddings with PCA / t-SNE / UMAP.
-        n_components can be up to latent_dim (9).
+        Saves and returns the 9D UMAP projection mapped down to 3D.
+        Uses Euclidean metrics and is safe against NaNs/Infs.
         """
         if self._embeddings is None or len(self._embeddings) == 0:
             return None
-        X = self._embeddings.copy()
-        n_samples, n_features = X.shape
 
-        # Clamp n_components to valid range
-        max_possible = min(n_samples - 1, n_features, 50)  # hard safety cap
-        n_components = max(2, min(int(n_components), max_possible))
+        # Defensive clean against NaNs/Infs
+        X = np.nan_to_num(self._embeddings, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # subsample only for t-SNE (slow); UMAP handles full data fine and preserves coloring
-        if n_samples > 2000 and method.lower() == "tsne":
-            idx = np.random.choice(n_samples, size=2000, replace=False)
-            X = X[idx]
-
-        method = method.lower()
-        if method == "pca":
-            from sklearn.decomposition import PCA
-            reducer = PCA(n_components=n_components, random_state=42)
-        elif method == "tsne":
-            from sklearn.manifold import TSNE
-            # sklearn TSNE is slow / limited for high n_components; still allow
-            reducer = TSNE(
-                n_components=n_components,
-                perplexity=min(30, X.shape[0] // 4),
-                random_state=42,
-                n_iter=500,
-                init="pca",
-            )
-        elif method == "umap":
-            import umap
-            # UMAP happily supports n_components up to n_features (here 9)
-            reducer = umap.UMAP(
-                n_components=n_components,
-                n_neighbors=15,
-                min_dist=0.1,
-                random_state=42,
-                metric="euclidean",
-            )
-        else:
-            from sklearn.decomposition import PCA
-            reducer = PCA(n_components=n_components, random_state=42)
-
+        import umap
+        # Project down to 3 components for 3D rendering
+        reducer = umap.UMAP(
+            n_components=3,
+            n_neighbors=15,
+            min_dist=0.1,
+            random_state=42,
+            metric="euclidean"
+        )
         return reducer.fit_transform(X)
 
     def get_feature_summary(self) -> pd.DataFrame:
