@@ -98,7 +98,7 @@ class RepositoryViewModel(QObject):
         # Project down to 3 components for 3D rendering
         reducer = umap.UMAP(
             n_components=3,
-            n_neighbors=15,
+            n_neighbors=10,
             min_dist=0.1,
             random_state=42,
             metric="euclidean"
